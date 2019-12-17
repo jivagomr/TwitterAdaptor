@@ -50,6 +50,8 @@ public class Adaptor {
 
                     String nsDC      = "http://purl.org/dc/terms/";
                     String nsDCType  = "http://purl.org/dc/dcmitype/";
+                    String nsFOAF    = "http://xmlns.com/foaf/0.1/";
+                    String nsPROV    = "http://www.w3.org/ns/prov";
                     String nsRDF     = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
                     String nsRDFs    = "http://www.w3.org/2000/01/rdf-schema#";
                     String nsSIOC    = "http://rdfs.org/sioc/ns#";
@@ -59,6 +61,8 @@ public class Adaptor {
 
                     model.setNsPrefix("dc", nsDC);
                     model.setNsPrefix("dctype", nsDCType);
+                    model.setNsPrefix("foaf", nsFOAF);
+                    model.setNsPrefix("prov", nsPROV);
                     model.setNsPrefix("rdf", nsRDF);
                     model.setNsPrefix("rdfs", nsRDFs);
                     model.setNsPrefix("sioc", nsSIOC);
@@ -66,19 +70,30 @@ public class Adaptor {
 
                     lines.forEach((item) -> {
                         try {
+                            
+                            //proveniência do dataset
+                            Resource subject_dataset = model.createResource("http://cores.ppgi.ufrj.br/datasets/"+out_ttl_file_name);
+                            subject_dataset.addLiteral(model.createProperty(nsDC+"title"),"");
+                            subject_dataset.addProperty(model.createProperty(nsDC+"created"),"");
+                            RDFNode obj_dataset = model.createResource(nsPROV+"entity");
+                            Property predicate_dataset = model.createProperty(nsRDF+"type");
+                            Statement stmt_dataset = model.createStatement(subject_dataset, predicate_dataset, obj_dataset);
+
+                            model.add(stmt_dataset);                            
+
                             JSONObject obj_json = (JSONObject) jsonParser.parse(item);
 
                             //atributos básicos
                             String id_tweet  = (String) obj_json.get("id_str");
                             String acc_name  = (String) ((JSONObject)obj_json.get("user")).get("screen_name");
-                            String label_name  = (String) ((JSONObject)obj_json.get("user")).get("name");
+                            String foaf_name  = (String) ((JSONObject)obj_json.get("user")).get("name");
                             String create_at = (String) obj_json.get("created_at");
                             String content   = (String) obj_json.get("text");
 
                             Resource subject = model.createResource(twitter_url+acc_name+"/status/"+id_tweet);
 
                             subject.addProperty(model.createProperty(nsDC+"created"), create_at)
-                                    .addProperty(model.createProperty(nsSIOC+"has_container"), acc_name)
+                                    .addProperty(model.createProperty(nsSIOC+"has_container"), twitter_url+acc_name)
                                     .addProperty(model.createProperty(nsSIOC+"content"),  content); 
 
                              Property has_creator = model.createProperty(nsSIOC+"has_creator"); 
@@ -90,11 +105,11 @@ public class Adaptor {
 
                                 if (retweeted_obj.containsKey("user")) {                                
                                     String acc_name_rt = (String)((JSONObject)retweeted_obj.get("user")).get("screen_name");
-                                    String rt_label_name = (String)((JSONObject)retweeted_obj.get("user")).get("name");
+                                    String rt_foaf_name = (String)((JSONObject)retweeted_obj.get("user")).get("name");
 
                                     subject.addProperty(has_creator,  model.createResource()
                                                                         .addProperty(model.createProperty(nsSIOC+"UserAccount"), twitter_url+acc_name_rt)
-                                                                        .addProperty(model.createProperty(nsRDFs+"label"), rt_label_name)                                        
+                                                                        .addProperty(model.createProperty(nsFOAF+"name"), rt_foaf_name)                                        
                                                         );
                                 }
 
@@ -103,7 +118,7 @@ public class Adaptor {
 
                                 subject.addProperty(has_creator,  model.createResource()
                                                                     .addProperty(model.createProperty(nsSIOC+"UserAccount"), twitter_url+acc_name)
-                                                                    .addProperty(model.createProperty(nsRDFs+"label"), label_name)
+                                                                    .addProperty(model.createProperty(nsFOAF+"name"), foaf_name)
                                                     );                          
 
                             }
